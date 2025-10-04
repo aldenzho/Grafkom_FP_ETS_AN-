@@ -128,6 +128,7 @@
     controls.dampingFactor = 0.06;
 
     // ---------- CONFIG (from original) ----------
+    
     const roomWidth = 7, roomDepth = 7, roomHeight = 3;
 
     const loader = new THREE.TextureLoader();
@@ -282,13 +283,16 @@
       scene.add(p);
       return p;
     }
-    const pillow1 = makePillow(leftX + 0.625, bedCenterZ + bedDepth/2 - 0.5, "Pillow L");
-    const pillow2 = makePillow(leftX + 0.625, bedCenterZ + bedDepth/2 - 0.65, "Pillow R");
+    const pillow1 = makePillow(leftX + 0.625, bedCenterZ + bedDepth/2 - 0.95, "Pillow L");
+    const pillow2 = makePillow(leftX + 0.625, bedCenterZ + bedDepth/2 - 2.15, "Pillow R");
+
+
+
 
     // ---------- DESK & CHAIR ----------
     const deskWidth = 3, deskDepth = 1.35, deskHeight = 0.75;
     const deskX = -roomWidth/2 + deskWidth/2 + 0.1;
-    const deskZ = bedCenterZ - 1.2;
+    const deskZ = bedCenterZ - 4.5;
 
     const deskTop = new THREE.Mesh(new THREE.BoxGeometry(deskWidth, 0.05, deskDepth),
       new THREE.MeshStandardMaterial({ color:0x8B4513, roughness:0.8 }));
@@ -306,10 +310,35 @@
     }
     makeLeg(1,1); makeLeg(1,-1); makeLeg(-1,1); makeLeg(-1,-1);
 
-    const chairSeat = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.6), new THREE.MeshStandardMaterial({ color:0x444444 }));
+    // Kursi kecil di depan meja
+    const chairSeat = new THREE.Mesh(
+      new THREE.BoxGeometry(0.6, 0.05, 0.6),
+      new THREE.MeshStandardMaterial({ color: 0x444444 })
+    );
     chairSeat.position.set(deskX + 0.1, 0.45, deskZ + 0.35);
-    chairSeat.castShadow = true; chairSeat.receiveShadow = true;
+    chairSeat.castShadow = true;
+    chairSeat.receiveShadow = true;
     scene.add(chairSeat);
+
+    const chairLegGeom = new THREE.BoxGeometry(0.05, 0.45, 0.05);
+    const chairLegMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+
+    function makeChairLeg(offsetX, offsetZ) {
+      const leg = new THREE.Mesh(chairLegGeom, chairLegMat);
+      leg.position.set(
+        chairSeat.position.x + offsetX * 0.25,
+        0.225,
+        chairSeat.position.z + offsetZ * 0.25
+      );
+      leg.castShadow = true;
+      leg.receiveShadow = true;
+      scene.add(leg);
+    }
+
+    makeChairLeg(1, 1);
+    makeChairLeg(1, -1);
+    makeChairLeg(-1, 1);
+    makeChairLeg(-1, -1);
 
     // ---------- LAMP ----------
     const lampLight = new THREE.PointLight(0xfff8e7, 0.9, 10);
