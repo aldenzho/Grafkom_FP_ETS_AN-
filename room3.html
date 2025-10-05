@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Room Advanced — Orbit / Raycast / Curtains / Lamp / Rug / Presets / Screenshot</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { margin:0; overflow:hidden; font-family: system-ui, -apple-system, "Segoe UI", Roboto; }
+    #container { width:100vw; height:100vh; position:relative; }
+    #ui {
+      position:absolute; right:14px; top:14px; width:340px; max-height:calc(100vh - 28px);
+      overflow:auto; background:rgba(16,16,22,0.9); color:#fff; padding:12px; border-radius:10px; z-index:30;
+      backdrop-filter: blur(6px);
+    }
+    h3 { margin:6px 0; color:#ffebcd; font-size:15px; }
+    .row { display:flex; gap:8px; align-items:center; margin:8px 0; }
+    .row label { width:110px; font-size:13px; color:#ddd; }
+    input[type="range"] { width:100%; }
+    input[type="color"] { width:46px; height:30px; border:0; padding:0; background:#fff; }
+    button { background:#6e48aa; border:none; color:white; padding:7px 10px; border-radius:6px; cursor:pointer; }
+    button.small { padding:6px 8px; font-size:13px; }
+    #info { position:absolute; left:14px; top:14px; z-index:30; background:rgba(255,255,255,0.95); color:#222; padding:8px 12px; border-radius:8px; font-size:13px; }
+    footer.hint { position:absolute; left:50%; transform:translateX(-50%); bottom:12px; z-index:30; background:rgba(0,0,0,0.5); color:#fff; padding:6px 10px; border-radius:8px; font-size:13px;}
+  </style>
+</head>
+<body>
+  <div id="container"></div>
+
+  <div id="info">Hover: <span id="hoverName">—</span> • Click object to edit</div>
+
+  <div id="ui">
+    <h3 id="selectedTitle">No selection</h3>
+
+    <div class="row">
+      <label>Color</label>
+      <input id="color" type="color" value="#ffffff">
+    </div>
+
+    <div class="row">
+      <label>Opacity</label>
+      <input id="opacity" type="range" min="0" max="1" step="0.01" value="1">
+      <div id="opval" style="width:36px;text-align:right">1</div>
+    </div>
+
+    <div class="row">
+      <label>Wireframe</label>
+      <input id="wire" type="checkbox">
+    </div>
+
+    <div id="phongUI" style="display:none">
+      <div class="row">
+        <label>Shininess</label>
+        <input id="shin" type="range" min="0" max="200" step="1" value="30">
+        <div id="shinVal" style="width:36px;text-align:right">30</div>
+      </div>
+    </div>
+
+    <div id="stdUI" style="display:none">
+      <div class="row">
+        <label>Metalness</label>
+        <input id="metal" type="range" min="0" max="1" step="0.01" value="0.5">
+        <div id="metVal" style="width:36px;text-align:right">0.5</div>
+      </div>
+      <div class="row">
+        <label>Roughness</label>
+        <input id="rough" type="range" min="0" max="1" step="0.01" value="0.5">
+        <div id="rghVal" style="width:36px;text-align:right">0.5</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <button id="focusBtn" class="small">Focus</button>
+      <button id="closeBtn" class="small">Close</button>
+      <button id="resetBtn" class="small">Reset Mat</button>
+    </div>
+
+    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.06)">
+
+    <h3>Room Controls</h3>
+    <div class="row">
+      <label>Sun Intensity</label>
+      <input id="sun" type="range" min="0" max="2" step="0.05" value="1.2"><div id="sunV" style="width:36px;text-align:right">1.2</div>
+    </div>
+    <div class="row">
+      <label>Lamp Intensity</label>
+      <input id="lamp" type="range" min="0" max="2" step="0.05" value="0.9"><div id="lampV" style="width:36px;text-align:right">0.9</div>
+    </div>
+
+    <div class="row">
+      <label>Curtains</label>
+      <button id="toggleCurt" class="small">Open/Close</button>
+      <button id="animCurt" class="small">Animated</button>
+    </div>
+
+    <div class="row">
+      <label>Lamp</label>
+      <button id="toggleLamp" class="small">On/Off</button>
+      <button id="blinkLamp" class="small">Blink</button>
+    </div>
+
+    <div class="row">
+      <label>Screenshot</label>
+      <button id="screenshot" class="small">Download PNG</button>
+    </div>
+
+    <h3>Presets</h3>
+    <div class="row">
+      <label>Preset name</label>
+      <input id="presetName" placeholder="e.g., cozy" style="flex:1">
+    </div>
+    <div class="row">
+      <button id="savePreset" class="small">Save Preset</button>
+      <select id="presetList" style="flex:1"></select>
+    </div>
+    <div class="row">
+      <button id="loadPreset" class="small">Load</button>
+      <button id="delPreset" class="small">Delete</button>
+    </div>
+
+    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.06)">
+
+    <div class="row">
+      <label>Performance</label>
+      <button id="perfBtn" class="small">Low Quality</button>
+    </div>
+    <div style="height:8px"></div>
+    <div style="font-size:12px;color:#aaa">Note: Place textures (wall.jpg, floor.jpg, bed.jpg, blanket.jpg, rug.jpg, rug_normal.jpg) in the same folder. Use local server.</div>
+  </div>
+
+  <footer class="hint">Tip: Hover objects to see name. Click to edit. Use Focus to center camera.</footer>
+
+  <script type="module">
+    import * as THREE from "https://esm.sh/three@0.150.0";
+    import { OrbitControls } from "https://esm.sh/three@0.150.0/examples/jsm/controls/OrbitControls.js";
+
+    const container = document.getElementById('container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xbfd1e5);
+
+    const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
+    camera.position.set(0,1.6,3);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0,1,0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+
+    // room params
+    const roomW = 7, roomD = 7, roomH = 3;
+    const loader = new THREE.TextureLoader();
+
+    // textures
+    // Placeholder function if textures are not found, to prevent crash
+    const dummyTexture = new THREE.Texture();
+    
+    // Helper function to safely load texture or use dummy
+    function safeLoadTexture(url, repeat = null) {
+        const tex = loader.load(url, 
+            t => { 
+                t.needsUpdate = true;
+                if(repeat) {
+                    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+                    t.repeat.set(repeat[0], repeat[1]);
+                }
+            }, 
+            undefined, 
+            e => { console.warn(`Texture ${url} failed to load. Using fallback.`, e); } // Error handler
+        );
+        if(!tex.image) tex.image = document.createElement('canvas'); // Set dummy image for immediate use
+        return tex;
+    }
+    
+    const wallTex = safeLoadTexture('wall.jpg', [2, 1]);
+    const floorTex = safeLoadTexture('floor.jpg', [4, 4]);
+    const bedTex = safeLoadTexture('bed.jpg'); bedTex.wrapS = bedTex.wrapT = THREE.RepeatWrapping; // Bed has no specific repeat
+    const blanketTex = safeLoadTexture('blanket.jpg', [2, 2]);
+    const rugTex = safeLoadTexture('rug.jpg', [2, 2]);
+    const rugNormal = safeLoadTexture('rug_normal.jpg');
+
+    // materials
+    const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, side: THREE.DoubleSide });
+    const floorMat = new THREE.MeshStandardMaterial({ map: floorTex });
+    const bedMat = new THREE.MeshStandardMaterial({ map: bedTex, roughness:0.7, metalness:0 });
+    const blanketMat = new THREE.MeshStandardMaterial({ map: blanketTex, roughness:0.2 });
+    const pillowMat = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.8 });
+    const deskMat = new THREE.MeshStandardMaterial({ color:0x8B4513, roughness:0.8 });
+
+    // floor
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomD), floorMat);
+    floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; floor.name='Floor'; scene.add(floor); // Added name
+    
+    // walls back/front/left
+    const wallG = new THREE.PlaneGeometry(roomW, roomH);
+    const wallBack = new THREE.Mesh(wallG, wallMat.clone()); wallBack.position.set(0,roomH/2,-roomD/2); wallBack.name='Wall Back'; scene.add(wallBack); // Added clone and name
+    const wallFront = new THREE.Mesh(wallG, wallMat.clone()); wallFront.position.set(0,roomH/2,roomD/2); wallFront.rotation.y = Math.PI; wallFront.name='Wall Front'; scene.add(wallFront); // Added clone and name
+    const wallLeft = new THREE.Mesh(wallG, wallMat.clone()); wallLeft.position.set(-roomW/2,roomH/2,0); wallLeft.rotation.y = Math.PI/2; wallLeft.name='Wall Left'; scene.add(wallLeft); // Added clone and name
+
+    // right wall with window (shape hole)
+    const shape = new THREE.Shape();
+    shape.moveTo(-roomW/2,0); shape.lineTo(roomW/2,0); shape.lineTo(roomW/2,roomH); shape.lineTo(-roomW/2,roomH); shape.lineTo(-roomW/2,0);
+    const windowW = 2.0, windowH=1.5, windowCenterY = 1.5;
+    const hx = windowW/2, hyL = windowCenterY-windowH/2, hyH = windowCenterY+windowH/2;
+    const hole = new THREE.Path(); hole.moveTo(-hx,hyL); hole.lineTo(hx,hyL); hole.lineTo(hx,hyH); hole.lineTo(-hx,hyH); hole.lineTo(-hx,hyL);
+    shape.holes.push(hole);
+    const wallRightGeo = new THREE.ShapeGeometry(shape);
+    wallRightGeo.computeBoundingBox();
+    const max = wallRightGeo.boundingBox.max, min = wallRightGeo.boundingBox.min;
+    const offset = new THREE.Vector2(0-min.x, 0-min.y); const range = new THREE.Vector2(max.x-min.x, max.y-min.y);
+    const pos = wallRightGeo.attributes.position, uvs = [];
+    for(let i=0;i<pos.count;i++){ const x=pos.getX(i), y=pos.getY(i); uvs.push((x+offset.x)/range.x,(y+offset.y)/range.y); }
+    wallRightGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs,2));
+    const wallRight = new THREE.Mesh(wallRightGeo, wallMat); wallRight.rotation.y = -Math.PI/2; wallRight.position.set(roomW/2,0,0); wallRight.name='Wall Window'; scene.add(wallRight);
+
+    // ceiling
+    const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomD), wallMat.clone()); ceiling.position.set(0,roomH,0); ceiling.rotation.x = Math.PI/2; ceiling.receiveShadow = true; ceiling.name='Ceiling'; scene.add(ceiling); // Added clone and name
+
+    // window glass + frame
+    const windowGlass = new THREE.Mesh(new THREE.PlaneGeometry(windowW, windowH), new THREE.MeshStandardMaterial({ color:0x87CEEB, transparent:true, opacity:0.4, side:THREE.DoubleSide }));
+    windowGlass.position.set(roomW/2 - 0.01, windowCenterY, 0); windowGlass.rotation.y = -Math.PI/2; windowGlass.name='Window Glass'; scene.add(windowGlass);
+
+    const frameMat = new THREE.MeshStandardMaterial({ color:0x333333 });
+    const frameOffset = roomW/2 + 0.02; const frameThickness = 0.05;
+    const frameTop = new THREE.Mesh(new THREE.BoxGeometry(windowW+0.05,0.1,frameThickness), frameMat); frameTop.position.set(frameOffset, windowCenterY+windowH/2+0.05, 0); frameTop.rotation.y = -Math.PI/2; frameTop.name='Frame Top'; scene.add(frameTop);
+    const frameBottom = frameTop.clone(); frameBottom.position.set(frameOffset, windowCenterY-windowH/2-0.05,0); frameBottom.name='Frame Bottom'; scene.add(frameBottom);
+    const frameLeft = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, windowH+0.05, frameThickness), frameMat); frameLeft.position.set(frameOffset, windowCenterY, -windowW/2-0.025); frameLeft.rotation.y = -Math.PI/2; frameLeft.name='Frame Left'; scene.add(frameLeft);
+    const frameRight = frameLeft.clone(); frameRight.position.set(frameOffset, windowCenterY, windowW/2 + 0.025); frameRight.name='Frame Right'; scene.add(frameRight);
+
+    // bed, blanket, pillows
+    const bedW = roomW*0.6, bedD = roomD/2 - 0.2, bedH = 0.5;
+    const leftX = -roomW/2; const bedCenterX = leftX + bedW/2; const bedCenterZ = roomD/2 - bedD/2 - 0.05;
+    const bedMesh = new THREE.Mesh(new THREE.BoxGeometry(bedW, bedH, bedD), bedMat); bedMesh.position.set(bedCenterX, bedH/2, bedCenterZ); bedMesh.castShadow=true; bedMesh.receiveShadow=true; bedMesh.name='Bed'; scene.add(bedMesh);
+    const blanketMesh = new THREE.Mesh(new THREE.BoxGeometry(bedW-0.05, 0.05, bedD-0.05), blanketMat); blanketMesh.position.set(bedCenterX, bedH+0.025, bedCenterZ); blanketMesh.castShadow=true; blanketMesh.receiveShadow=true; blanketMesh.name='Blanket'; scene.add(blanketMesh);
+    function makePillow(x,z, name){ const g=new THREE.SphereGeometry(0.32,32,32); const m=pillowMat.clone(); const p=new THREE.Mesh(g,m); p.scale.set(1.5,0.45,1.85); p.position.set(x, bedH + 0.32*0.45, z); p.castShadow=true; p.receiveShadow=true; p.name = name; scene.add(p); return p; }
+    const pillow1 = makePillow(leftX + 0.625, bedCenterZ + bedD/2 - 0.95, "Pillow L");
+    const pillow2 = makePillow(leftX + 0.625, bedCenterZ + bedD/2 - 2.15, "Pillow R");
+
+    // desk & chair
+    const deskW = 3, deskD = 1.35, deskH = 0.75;
+    const deskX = -roomW/2 + deskW/2 + 0.1;
+    const deskZ = bedCenterZ - 4.5; // <-- disamakan: sebelumnya -1.2, sekarang -4.5
+    const deskTop = new THREE.Mesh(
+    new THREE.BoxGeometry(deskW, 0.05, deskD),
+    deskMat
+    );
+    deskTop.position.set(deskX, deskH, deskZ);
+    deskTop.castShadow = true;
+    deskTop.receiveShadow = true;
+    deskTop.name = 'Desk';
+    scene.add(deskTop);
+
+    const legG = new THREE.BoxGeometry(0.05, deskH, 0.05);
+    const legM = new THREE.MeshStandardMaterial({ color: 0x5a3825 });
+    function makeLeg(oX, oZ) {
+    const leg = new THREE.Mesh(legG, legM);
+    leg.position.set(
+        deskTop.position.x + oX * (deskW / 2 - 0.025),
+        deskH / 2,
+        deskTop.position.z + oZ * (deskD / 2 - 0.025)
+    );
+    leg.castShadow = true;
+    leg.receiveShadow = true;
+    scene.add(leg);
+    }
+    makeLeg(1, 1);
+    makeLeg(1, -1);
+    makeLeg(-1, 1);
+    makeLeg(-1, -1);
+
+    // Kursi kecil di depan meja (posisi relatif ke deskX/deskZ sama seperti contoh)
+    const chair = new THREE.Mesh(
+    new THREE.BoxGeometry(0.6, 0.05, 0.6),
+    new THREE.MeshStandardMaterial({ color: 0x444444 })
+    );
+    chair.position.set(deskX + 0.1, 0.45, deskZ + 0.35); // tetap sama offset
+    chair.castShadow = true;
+    chair.receiveShadow = true;
+    chair.name = 'Chair';
+    scene.add(chair);
+
+
+    // rug with normal map
+    const rug = new THREE.Mesh(new THREE.PlaneGeometry(1.6,1.6), new THREE.MeshStandardMaterial({ map: rugTex, normalMap: rugNormal, roughness:0.9 }));
+    rug.rotation.x = -Math.PI/2; rug.position.set(bedCenterX - 0.6, 0.01, bedCenterZ + bedD/2 + 0.6); rug.receiveShadow = true; rug.name='Rug'; scene.add(rug);
+
+    // lamp & bulb
+    const lampLight = new THREE.PointLight(0xfff8e7, 0.9, 10); lampLight.position.set(0,2.6,0); lampLight.castShadow=true; scene.add(lampLight);
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 16), new THREE.MeshStandardMaterial({ emissive: 0xffffaa, emissiveIntensity: 0.9, color: 0xffffff }));
+    bulb.position.copy(lampLight.position); bulb.name='Bulb'; scene.add(bulb);
+
+    // sunlight
+    const sunlight = new THREE.DirectionalLight(0xffffff, 1.2); sunlight.position.set(roomW, 2.2, 0); sunlight.target.position.set(0,1,0); sunlight.castShadow=true;
+    sunlight.shadow.mapSize.width = sunlight.shadow.mapSize.height = 2048;
+    sunlight.shadow.camera.left = -5; sunlight.shadow.camera.right =5; sunlight.shadow.camera.top =5; sunlight.shadow.camera.bottom = -5;
+    scene.add(sunlight); scene.add(sunlight.target);
+
+    // curtains (two panels)
+    const curtainMat = new THREE.MeshStandardMaterial({ color:0x882233, side:THREE.DoubleSide });
+    const curtainLeft = new THREE.Mesh(new THREE.PlaneGeometry(windowW/2, windowH+0.2, 4, 4), curtainMat.clone());
+    const curtainRight = new THREE.Mesh(new THREE.PlaneGeometry(windowW/2, windowH+0.2, 4, 4), curtainMat.clone());
+    // place near window (slightly inside)
+    curtainLeft.position.set(roomW/2 - 0.02, windowCenterY, -windowW/4); curtainLeft.rotation.y = -Math.PI/2; curtainLeft.name='Curtain Left';
+    curtainRight.position.set(roomW/2 - 0.02, windowCenterY, windowW/4); curtainRight.rotation.y = -Math.PI/2; curtainRight.name='Curtain Right';
+    curtainLeft.userData.closedPosZ = -windowW/4; curtainLeft.userData.openPosZ = -windowW/4 - 0.9;
+    curtainRight.userData.closedPosZ = windowW/4; curtainRight.userData.openPosZ = windowW/4 + 0.9;
+    scene.add(curtainLeft); scene.add(curtainRight);
+
+    // list of selectable objects
+    const selectables = [bedMesh, blanketMesh, pillow1, pillow2, deskTop, chair, bulb, windowGlass, wallRight, rug, curtainLeft, curtainRight, floor, wallBack, wallFront, wallLeft, ceiling]; // Added all walls, ceiling, floor to be selectable
+
+    // Raycaster + pointer
+    const ray = new THREE.Raycaster(); const pointer = new THREE.Vector2();
+    let hoverObj = null, selected = null;
+
+    // UI visibility helper
+    document.getElementById('ui').style.display = 'none';
+
+    function setHover(obj){
+      if(hoverObj && hoverObj !== obj && hoverObj.userData._origEmissive){
+        if(hoverObj.material && hoverObj.material.emissive) hoverObj.material.emissive.copy(hoverObj.userData._origEmissive);
+      }
+      hoverObj = obj;
+      document.getElementById('hoverName').textContent = hoverObj ? (hoverObj.name || 'Unnamed') : '—';
+      if(hoverObj){
+        if(!hoverObj.userData._origEmissive && hoverObj.material && hoverObj.material.emissive) hoverObj.userData._origEmissive = hoverObj.material.emissive.clone();
+        if(hoverObj.material && hoverObj.material.emissive) hoverObj.material.emissive.setHex(0x222222);
+      }
+    }
+
+    function onMove(e){
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      ray.setFromCamera(pointer, camera);
+      const ints = ray.intersectObjects(selectables, true);
+      setHover(ints.length ? ints[0].object : null);
+    }
+
+    // New Raycast logic: Uses a separate function that includes special object clicks (curtains/bulb)
+    function onDown(e){
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      ray.setFromCamera(pointer, camera);
+      const ints = ray.intersectObjects(selectables, true);
+      if(ints.length){
+        // Special actions for curtains and bulb, otherwise normal selection
+        const obj = ints[0].object;
+        if(obj===curtainLeft || obj===curtainRight){ ui.animCurt.click(); deselect(); return; } // Deselect after action
+        if(obj===bulb){ ui.toggleLamp.click(); deselect(); return; } // Deselect after action
+        select(obj);
+      } else deselect();
+    }
+
+    renderer.domElement.addEventListener('pointermove', onMove);
+    renderer.domElement.addEventListener('pointerdown', onDown);
+
+    // UI elements
+    const ui = {
+      title: document.getElementById('selectedTitle'),
+      color: document.getElementById('color'),
+      opacity: document.getElementById('opacity'),
+      opval: document.getElementById('opval'),
+      wire: document.getElementById('wire'),
+      phongUI: document.getElementById('phongUI'),
+      shin: document.getElementById('shin'),
+      shinVal: document.getElementById('shinVal'),
+      stdUI: document.getElementById('stdUI'),
+      metal: document.getElementById('metal'),
+      metVal: document.getElementById('metVal'),
+      rough: document.getElementById('rough'),
+      rghVal: document.getElementById('rghVal'),
+      focusBtn: document.getElementById('focusBtn'),
+      closeBtn: document.getElementById('closeBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      sunS: document.getElementById('sun'), sunV: document.getElementById('sunV'),
+      lampS: document.getElementById('lamp'), lampV: document.getElementById('lampV'),
+      toggleCurt: document.getElementById('toggleCurt'), animCurt: document.getElementById('animCurt'),
+      toggleLamp: document.getElementById('toggleLamp'), blinkLamp: document.getElementById('blinkLamp'),
+      screenshotBtn: document.getElementById('screenshot'),
+      presetName: document.getElementById('presetName'), savePreset: document.getElementById('savePreset'), presetList: document.getElementById('presetList'),
+      loadPreset: document.getElementById('loadPreset'), delPreset: document.getElementById('delPreset'), perfBtn: document.getElementById('perfBtn')
+    };
+
+    // helper: save original material properties
+    function saveOriginalMat(obj){
+      if(!obj.userData._origMat && obj.material){
+        // Clone the material to ensure reset works even after selecting/deselecting multiple times
+        obj.userData._origMat = {
+          originalMaterial: obj.material.clone(),
+          color: obj.material.color ? obj.material.color.clone() : null,
+          emissive: obj.material.emissive ? obj.material.emissive.clone() : null,
+          opacity: obj.material.opacity,
+          wireframe: !!obj.material.wireframe,
+          shininess: obj.material.shininess !== undefined ? obj.material.shininess : null,
+          metalness: obj.material.metalness !== undefined ? obj.material.metalness : null,
+          roughness: obj.material.roughness !== undefined ? obj.material.roughness : null
+        };
+      }
+    }
+
+    function select(obj){
+      // Restore previous hover emissive if exists
+      if(selected && selected.userData && selected.userData._origEmissive && selected.material.emissive) selected.material.emissive.copy(selected.userData._origEmissive);
+      
+      selected = obj;
+      saveOriginalMat(selected);
+      document.getElementById('ui').style.display = 'block';
+      ui.title.textContent = selected.name || 'Selected';
+      
+      // populate values
+      if(selected.material && selected.material.color) ui.color.value = '#' + selected.material.color.getHexString();
+      ui.opacity.value = selected.material.opacity !== undefined ? selected.material.opacity : 1; ui.opval.textContent = parseFloat(ui.opacity.value).toFixed(2);
+      ui.wire.checked = !!selected.material.wireframe;
+      
+      if(selected.material instanceof THREE.MeshPhongMaterial){
+        ui.phongUI.style.display = 'block'; ui.stdUI.style.display = 'none';
+        ui.shin.value = selected.material.shininess !== undefined ? selected.material.shininess : 30; ui.shinVal.textContent = ui.shin.value;
+      } else if(selected.material instanceof THREE.MeshStandardMaterial){
+        ui.phongUI.style.display = 'none'; ui.stdUI.style.display = 'block';
+        ui.metal.value = selected.material.metalness !== undefined ? selected.material.metalness : 0; 
+        ui.rough.value = selected.material.roughness !== undefined ? selected.material.roughness : 1;
+        ui.metVal.textContent = parseFloat(ui.metal.value).toFixed(2); 
+        ui.rghVal.textContent = parseFloat(ui.rough.value).toFixed(2);
+      } else { ui.phongUI.style.display = ui.stdUI.style.display = 'none'; }
+    }
+
+    function deselect(){ 
+        if(selected){ 
+          // restore hover emissive if stored
+          if(selected.userData && selected.userData._origEmissive && selected.material.emissive) selected.material.emissive.copy(selected.userData._origEmissive);
+        } 
+        selected = null; 
+        document.getElementById('ui').style.display = 'none'; 
+    }
+
+    // UI listeners (material edits)
+    ui.color.addEventListener('input', e => { if(selected && selected.material && selected.material.color) selected.material.color.set(e.target.value); });
+    ui.opacity.addEventListener('input', e => { 
+        ui.opval.textContent = parseFloat(e.target.value).toFixed(2); 
+        if(selected && selected.material){ 
+            selected.material.opacity = parseFloat(e.target.value); 
+            selected.material.transparent = selected.material.opacity < 1; 
+            selected.material.needsUpdate = true;
+        }
+    });
+    ui.wire.addEventListener('change', e => { if(selected && selected.material) selected.material.wireframe = e.target.checked; });
+    ui.shin.addEventListener('input', e => { 
+        ui.shinVal.textContent = e.target.value; 
+        if(selected && selected.material instanceof THREE.MeshPhongMaterial) selected.material.shininess = parseFloat(e.target.value); 
+    });
+    ui.metal.addEventListener('input', e => { 
+        ui.metVal.textContent = parseFloat(e.target.value).toFixed(2); 
+        if(selected && selected.material instanceof THREE.MeshStandardMaterial) selected.material.metalness = parseFloat(e.target.value); 
+    });
+    ui.rough.addEventListener('input', e => { 
+        ui.rghVal.textContent = parseFloat(e.target.value).toFixed(2); 
+        if(selected && selected.material instanceof THREE.MeshStandardMaterial) selected.material.roughness = parseFloat(e.target.value); 
+    });
+
+    // lighting UI
+    ui.sunS.addEventListener('input', e => { sunlight.intensity = parseFloat(e.target.value); ui.sunV.textContent = parseFloat(e.target.value).toFixed(1); });
+    ui.lampS.addEventListener('input', e => { lampLight.intensity = parseFloat(e.target.value); ui.lampV.textContent = parseFloat(e.target.value).toFixed(1); bulb.material.emissiveIntensity = lampLight.intensity; });
+
+    // curtains: toggle (instant) and animated (lerp)
+    let curtainsOpen = false; let curtAnimating = false;
+    ui.toggleCurt.addEventListener('click', () => { 
+      curtainsOpen = !curtainsOpen; // instant teleport to open/closed
+      curtainLeft.position.z = curtainsOpen ? curtainLeft.userData.openPosZ : curtainLeft.userData.closedPosZ;
+      curtainRight.position.z = curtainsOpen ? curtainRight.userData.openPosZ : curtainRight.userData.closedPosZ;
+    });
+    ui.animCurt.addEventListener('click', () => { 
+      if(curtAnimating) return; 
+      curtAnimating = true; 
+      curtainsOpen = !curtainsOpen; // animate over 40 frames
+      const frames = 40; let t=0;
+      const startL = curtainLeft.position.z, startR = curtainRight.position.z;
+      const targetL = curtainsOpen ? curtainLeft.userData.openPosZ : curtainLeft.userData.closedPosZ;
+      const targetR = curtainsOpen ? curtainRight.userData.openPosZ : curtainRight.userData.closedPosZ;
+      const anim = () => {
+        t++; const alpha = t/frames; const ease = (--alpha)*alpha*alpha + 1; // easeOutCubic
+        curtainLeft.position.z = THREE.MathUtils.lerp(startL, targetL, ease);
+        curtainRight.position.z = THREE.MathUtils.lerp(startR, targetR, ease);
+        if(t < frames) requestAnimationFrame(anim); else curtAnimating = false;
+      };
+      anim();
+    });
+
+    // lamp toggle & blink
+    let lampOn = true, blinkInterval = null;
+    ui.toggleLamp.addEventListener('click', ()=> {
+      lampOn = !lampOn;
+      lampLight.intensity = lampOn ? parseFloat(ui.lampS.value) : 0;
+      bulb.material.emissiveIntensity = lampOn ? lampLight.intensity : 0;
+      // Stop blinking if lamp is manually toggled
+      if (blinkInterval) { clearInterval(blinkInterval); blinkInterval = null; }
+    });
+    ui.blinkLamp.addEventListener('click', ()=>{
+      if(blinkInterval){ 
+        clearInterval(blinkInterval); 
+        blinkInterval=null; 
+        // Restore intensity to saved state
+        lampLight.intensity = lampOn ? parseFloat(ui.lampS.value) : 0; 
+        bulb.material.emissiveIntensity = lampOn ? lampLight.intensity : 0; 
+        return; 
+      }
+      let on = true; 
+      // Ensure lamp is logically ON before blinking
+      if (!lampOn) { lampOn = true; } 
+      blinkInterval = setInterval(()=>{ 
+        on=!on; 
+        lampLight.intensity = on ? parseFloat(ui.lampS.value) : 0; 
+        bulb.material.emissiveIntensity = lampLight.intensity; 
+      }, 350);
+    });
+
+    // screenshot
+    ui.screenshotBtn.addEventListener('click', ()=> {
+      try {
+        renderer.render(scene, camera);
+        const dataURL = renderer.domElement.toDataURL('image/png');
+        const a = document.createElement('a'); a.href = dataURL; a.download = 'room_screenshot.png'; a.click();
+      } catch(err) { alert('Screenshot failed: ' + err.message); }
+    });
+
+    // focus function (lerp camera and target)
+    ui.focusBtn.addEventListener('click', ()=> {
+      if(!selected) return;
+      const box = new THREE.Box3().setFromObject(selected); 
+      const center = box.getCenter(new THREE.Vector3()); 
+      const size = box.getSize(new THREE.Vector3()).length();
+      
+      // Calculate a distance based on object size, minimum 2.5
+      const distance = Math.max(size * 1.5, 2.5); 
+      
+      // Get the current camera direction relative to the center
+      const dir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
+      const newPos = center.clone().add(dir.multiplyScalar(distance));
+      
+      const startPos = camera.position.clone(), startTarget = controls.target.clone(); 
+      const frames = 36; let t=0;
+      
+      const anim = () => { 
+        t++; 
+        const alpha = t/frames; 
+        // Use an easing function for smoother transition
+        const ease = 0.5 - Math.cos(alpha * Math.PI) / 2; // easeInOutSine
+        
+        camera.position.lerpVectors(startPos, newPos, ease); 
+        controls.target.lerpVectors(startTarget, center, ease); 
+        controls.update(); 
+        if(t<frames) requestAnimationFrame(anim); 
+      };
+      anim();
+    });
+
+    ui.closeBtn.addEventListener('click', ()=> deselect());
+    
+    // Reset Material: Uses the cloned original material
+    ui.resetBtn.addEventListener('click', ()=> { 
+        if(!selected || !selected.userData || !selected.userData._origMat) return; 
+        
+        // Temporarily store old emissive to restore hover state correctly
+        const oldEmissive = selected.material.emissive ? selected.material.emissive.clone() : null;
+
+        // Replace the current material with the original clone
+        selected.material = selected.userData._origMat.originalMaterial.clone(); 
+        selected.material.needsUpdate = true;
+        
+        // Restore the hover state if it was applied
+        if(oldEmissive) selected.material.emissive.copy(oldEmissive);
+
+        // Update the UI to reflect the reset values
+        select(selected); 
+    });
+
+    // presets save/load (localStorage)
+    function refreshPresetList(){
+      const sel = ui.presetList; sel.innerHTML = '<option value="">-- choose preset --</option>';
+      const keys = Object.keys(localStorage).filter(k=>k.startsWith('roomPreset:'));
+      keys.forEach(k=>{ const name = k.replace('roomPreset:',''); const opt = document.createElement('option'); opt.value = k; opt.textContent = name; sel.appendChild(opt); });
+    }
+    refreshPresetList();
+
+    ui.savePreset.addEventListener('click', ()=> {
+      if(!selected) { alert('Select an object first'); return; }
+      const name = (ui.presetName.value || selected.name || 'preset').trim();
+      if(!name) { alert('Enter preset name'); return; }
+      const data = {
+        material: {
+          color: selected.material.color ? selected.material.color.getHexString() : null,
+          opacity: selected.material.opacity,
+          wireframe: !!selected.material.wireframe,
+          shininess: selected.material.shininess !== undefined ? selected.material.shininess : null,
+          metalness: selected.material.metalness !== undefined ? selected.material.metalness : null,
+          roughness: selected.material.roughness !== undefined ? selected.material.roughness : null
+        }
+      };
+      localStorage.setItem('roomPreset:' + name, JSON.stringify(data));
+      refreshPresetList();
+      alert('Preset saved: ' + name);
+    });
+
+    ui.loadPreset.addEventListener('click', ()=> {
+      const key = ui.presetList.value; if(!key) return alert('Choose preset');
+      const json = localStorage.getItem(key); if(!json) return alert('Preset not found');
+      const data = JSON.parse(json);
+      if(!selected) return alert('Select object first to apply preset');
+      const m = selected.material;
+      
+      // Temporarily store old emissive to restore hover state correctly
+      const oldEmissive = m.emissive ? m.emissive.clone() : null;
+
+      if(data.material.color && m.color) m.color.set('#' + data.material.color);
+      if(data.material.opacity !== undefined) { m.opacity = data.material.opacity; m.transparent = m.opacity < 1; }
+      if(data.material.wireframe !== undefined) m.wireframe = data.material.wireframe;
+      if(data.material.shininess !== null && m.shininess !== undefined) m.shininess = data.material.shininess;
+      if(data.material.metalness !== null && m.metalness !== undefined) m.metalness = data.material.metalness;
+      if(data.material.roughness !== null && m.roughness !== undefined) m.roughness = data.material.roughness;
+      m.needsUpdate = true;
+      
+      // Restore the hover state if it was applied
+      if(oldEmissive) m.emissive.copy(oldEmissive);
+      
+      alert('Preset applied');
+      select(selected); // refresh UI
+    });
+
+    ui.delPreset.addEventListener('click', ()=> {
+      const key = ui.presetList.value; if(!key) return alert('Choose preset to delete');
+      localStorage.removeItem(key); refreshPresetList(); alert('Preset deleted');
+    });
+
+    // performance toggle
+    let lowQuality = false;
+    ui.perfBtn.addEventListener('click', ()=> {
+      lowQuality = !lowQuality;
+      if(lowQuality){
+        renderer.setPixelRatio(1);
+        renderer.shadowMap.enabled = false;
+        sunlight.shadow.mapSize.width = sunlight.shadow.mapSize.height = 512;
+        ui.perfBtn.textContent = 'High Quality';
+      } else {
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        sunlight.shadow.mapSize.width = sunlight.shadow.mapSize.height = 2048;
+        ui.perfBtn.textContent = 'Low Quality';
+      }
+    });
+
+    // pointer double-click on bulb or toggle lamp
+    renderer.domElement.addEventListener('dblclick', (e)=> {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      ray.setFromCamera(pointer, camera);
+      const ints = ray.intersectObjects([bulb], true);
+      if(ints.length) { ui.toggleLamp.click(); }
+    });
+
+    // animation loop
+    function animate(){
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // handle window resize
+    window.addEventListener('resize', ()=> {
+      camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);
+    });
+
+    // fill preset dropdown on load
+    refreshPresetList();
+
+  </script>
+</body>
+</html>
+</body>
+</html>
