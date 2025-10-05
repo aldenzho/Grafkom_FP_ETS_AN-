@@ -189,7 +189,6 @@
     const bedMat = new THREE.MeshStandardMaterial({ map: bedTex, roughness:0.7, metalness:0 });
     const blanketMat = new THREE.MeshStandardMaterial({ map: blanketTex, roughness:0.2 });
     const pillowMat = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.8 });
-    const deskMat = new THREE.MeshStandardMaterial({ color:0x8B4513, roughness:0.8 });
 
     // floor
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomD), floorMat);
@@ -240,13 +239,49 @@
     const pillow1 = makePillow(leftX + 0.625, bedCenterZ + bedD/2 - 0.95, "Pillow L");
     const pillow2 = makePillow(leftX + 0.625, bedCenterZ + bedD/2 - 2.15, "Pillow R");
 
-    // desk & chair
+    function createRoundedBox(width, height, depth, radius, smoothness) {
+      const shape = new THREE.Shape();
+      const eps = 0.00001;
+      const radius0 = radius - eps;
+      shape.absarc(eps, eps, eps, -Math.PI / 2, -Math.PI, true);
+      shape.absarc(eps, height - radius * 2, radius0, Math.PI, Math.PI / 2, true);
+      shape.absarc(width - radius * 2, height - radius * 2, radius0, Math.PI / 2, 0, true);
+      shape.absarc(width - radius * 2, eps, radius0, 0, -Math.PI / 2, true);
+      const geometry = new THREE.ExtrudeGeometry(shape, {
+        depth: depth - radius * 2,
+        bevelEnabled: true,
+        bevelSegments: smoothness * 2,
+        steps: 1,
+        bevelSize: radius,
+        bevelThickness: radius,
+        curveSegments: smoothness
+      });
+      geometry.center();
+      return geometry;
+    }
+
+    // === Desk ===
     const deskW = 3, deskD = 1.35, deskH = 0.75;
-    const deskX = -roomW/2 + deskW/2 + 0.1;
-    const deskZ = bedCenterZ - 4.5; // <-- disamakan: sebelumnya -1.2, sekarang -4.5
+    const deskX = -roomW / 2 + deskW / 2 + 0.1;
+    const deskZ = bedCenterZ - 4.5;
+
+    // Muat tekstur dari bed.jpg
+    const deskTexture = new THREE.TextureLoader().load('bed.jpg');
+    deskTexture.wrapS = THREE.RepeatWrapping;
+    deskTexture.wrapT = THREE.RepeatWrapping;
+    deskTexture.repeat.set(2, 2); // supaya teksturnya tidak terlalu besar
+
+    // Material dengan tekstur bed.jpg
+    const deskMat = new THREE.MeshStandardMaterial({
+      map: deskTexture,
+      metalness: 0.3,
+      roughness: 0.7,
+    });
+
+    // Bagian atas meja
     const deskTop = new THREE.Mesh(
-    new THREE.BoxGeometry(deskW, 0.05, deskD),
-    deskMat
+      new THREE.BoxGeometry(deskW, 0.05, deskD),
+      deskMat
     );
     deskTop.position.set(deskX, deskH, deskZ);
     deskTop.castShadow = true;
@@ -254,35 +289,80 @@
     deskTop.name = 'Desk';
     scene.add(deskTop);
 
-    const legG = new THREE.BoxGeometry(0.05, deskH, 0.05);
-    const legM = new THREE.MeshStandardMaterial({ color: 0x5a3825 });
+    // Kaki meja 
+    const legG = new THREE.BoxGeometry(0.2, deskH, 0.2);
+    const legM = new THREE.MeshStandardMaterial({ map: deskTexture });
+
     function makeLeg(oX, oZ) {
-    const leg = new THREE.Mesh(legG, legM);
-    leg.position.set(
-        deskTop.position.x + oX * (deskW / 2 - 0.025),
+      const leg = new THREE.Mesh(legG, legM);
+      leg.position.set(
+        deskTop.position.x + oX * (deskW / 2.1 - 0.025),
         deskH / 2,
-        deskTop.position.z + oZ * (deskD / 2 - 0.025)
-    );
-    leg.castShadow = true;
-    leg.receiveShadow = true;
-    scene.add(leg);
+        deskTop.position.z + oZ * (deskD / 2.25 - 0.025)
+      );
+      leg.castShadow = true;
+      leg.receiveShadow = true;
+      scene.add(leg);
     }
+
     makeLeg(1, 1);
     makeLeg(1, -1);
     makeLeg(-1, 1);
     makeLeg(-1, -1);
 
-    // Kursi kecil di depan meja (posisi relatif ke deskX/deskZ sama seperti contoh)
-    const chair = new THREE.Mesh(
-    new THREE.BoxGeometry(0.6, 0.05, 0.6),
-    new THREE.MeshStandardMaterial({ color: 0x444444 })
-    );
-    chair.position.set(deskX + 0.1, 0.45, deskZ + 0.35); // tetap sama offset
-    chair.castShadow = true;
-    chair.receiveShadow = true;
-    chair.name = 'Chair';
-    scene.add(chair);
 
+    // Kursi kecil di depan meja (pakai Rounded Box)
+    const chairSeatGeom = createRoundedBox(0.6, 0.05, 0.6, 0.08, 4);
+    const chairSeatMat = new THREE.MeshStandardMaterial({
+      color: 0x444444,
+      roughness: 0.4,
+      metalness: 0.2
+    });
+
+    const chairSeat = new THREE.Mesh(chairSeatGeom, chairSeatMat);
+    chairSeat.position.set(deskX + 0.1, 0.45, deskZ + 0.65);
+    chairSeat.castShadow = true;
+    chairSeat.receiveShadow = true;
+    scene.add(chairSeat);
+
+
+    const chairLegGeom = new THREE.BoxGeometry(0.05, 0.45, 0.05);
+    const chairLegMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+
+    function makeChairLeg(offsetX, offsetZ) {
+      const leg = new THREE.Mesh(chairLegGeom, chairLegMat);
+      leg.position.set(
+        chairSeat.position.x + offsetX * 0.25,
+        0.225,
+        chairSeat.position.z + offsetZ * 0.25
+      );
+      leg.castShadow = true;
+      leg.receiveShadow = true;
+      scene.add(leg);
+    }
+
+    makeChairLeg(1, 1);
+    makeChairLeg(1, -1);
+    makeChairLeg(-1, 1);
+    makeChairLeg(-1, -1);
+
+    // Sandaran kursi (pakai Rounded Box)
+    const backrestGeom = createRoundedBox(0.6, 0.6, 0.05, 0.08, 4);
+    const backrestMat = new THREE.MeshStandardMaterial({
+      color: 0x444444,
+      roughness: 0.5,
+      metalness: 0.1
+    });
+
+    const backrest = new THREE.Mesh(backrestGeom, backrestMat);
+    backrest.position.set(
+      chairSeat.position.x,
+      chairSeat.position.y + 0.35, // naik sedikit dari dudukan
+      chairSeat.position.z + 0.275 // di belakang kursi
+    );
+    backrest.castShadow = true;
+    backrest.receiveShadow = true;
+    scene.add(backrest);
 
     // rug with normal map
     const rug = new THREE.Mesh(new THREE.PlaneGeometry(1.6,1.6), new THREE.MeshStandardMaterial({ map: rugTex, normalMap: rugNormal, roughness:0.9 }));
@@ -311,7 +391,7 @@
     scene.add(curtainLeft); scene.add(curtainRight);
 
     // list of selectable objects
-    const selectables = [bedMesh, blanketMesh, pillow1, pillow2, deskTop, chair, bulb, windowGlass, wallRight, rug, curtainLeft, curtainRight, floor, wallBack, wallFront, wallLeft, ceiling]; // Added all walls, ceiling, floor to be selectable
+    const selectables = [bedMesh, blanketMesh, pillow1, pillow2, deskTop, chairSeat, bulb, windowGlass, wallRight, rug, curtainLeft, curtainRight, floor, wallBack, wallFront, wallLeft, ceiling]; // Added all walls, ceiling, floor to be selectable
 
     // Raycaster + pointer
     const ray = new THREE.Raycaster(); const pointer = new THREE.Vector2();
