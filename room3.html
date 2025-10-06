@@ -366,7 +366,7 @@
 
     // rug with normal map
     const rug = new THREE.Mesh(new THREE.PlaneGeometry(1.6,1.6), new THREE.MeshStandardMaterial({ map: rugTex, normalMap: rugNormal, roughness:0.9 }));
-    rug.rotation.x = -Math.PI/2; rug.position.set(bedCenterX - 0.6, 0.01, bedCenterZ + bedD/2 + 0.6); rug.receiveShadow = true; rug.name='Rug'; scene.add(rug);
+    rug.rotation.x = -Math.PI/2; rug.position.set(bedCenterX - 0.4, 0.01, bedCenterZ + bedD/2 - 5.3); rug.receiveShadow = true; rug.name='Rug'; scene.add(rug);
 
     // lamp & bulb
     const lampLight = new THREE.PointLight(0xfff8e7, 0.9, 10); lampLight.position.set(0,2.6,0); lampLight.castShadow=true; scene.add(lampLight);
