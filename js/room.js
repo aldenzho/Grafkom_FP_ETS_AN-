@@ -111,5 +111,20 @@
     curtainRight.userData.closedPosZ = windowW/4; curtainRight.userData.openPosZ = windowW/4 + 0.9;
     scene.add(curtainLeft); scene.add(curtainRight);
 
+    // --- SKYBOX (pemandangan luar jendela) ---
+    // Gunakan CubeTextureLoader untuk load skybox dari URL
+    const skyboxLoader = new THREE.CubeTextureLoader();
+    const skyboxTexture = skyboxLoader.load([
+    'https://threejs.org/examples/textures/cube/Bridge2/posx.jpg',
+    'https://threejs.org/examples/textures/cube/Bridge2/negx.jpg',
+    'https://threejs.org/examples/textures/cube/Bridge2/posy.jpg',
+    'https://threejs.org/examples/textures/cube/Bridge2/negy.jpg',
+    'https://threejs.org/examples/textures/cube/Bridge2/posz.jpg',
+    'https://threejs.org/examples/textures/cube/Bridge2/negz.jpg'
+    ]);
+
+    scene.background = skyboxTexture;
+
+
 
     export { THREE, safeLoadTexture,sunlight, lampLight, scene, camera, renderer, controls, roomW, roomD, bulb, windowGlass, wallRight, curtainLeft, curtainRight, floor, wallBack, wallFront, wallLeft, ceiling };
