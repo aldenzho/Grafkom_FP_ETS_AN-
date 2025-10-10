@@ -112,4 +112,4 @@
     scene.add(curtainLeft); scene.add(curtainRight);
 
 
-    export { THREE, safeLoadTexture,OrbitControls, scene, camera, renderer, controls, roomW, roomD, bulb, windowGlass, wallRight, curtainLeft, curtainRight, floor, wallBack, wallFront, wallLeft, ceiling };
+    export { THREE, safeLoadTexture,sunlight, lampLight, scene, camera, renderer, controls, roomW, roomD, bulb, windowGlass, wallRight, curtainLeft, curtainRight, floor, wallBack, wallFront, wallLeft, ceiling };

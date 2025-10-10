@@ -2,7 +2,7 @@
     import { deskTop } from './desk.js';
     import { pillow1, pillow2 } from './pillow.js';
     import{chairSeat} from "./chair.js"
-    import { THREE, scene, controls,camera,  renderer, bulb, curtainLeft, curtainRight, floor, windowGlass, wallRight, wallBack, wallFront, wallLeft, ceiling } from './room.js';
+    import { THREE,lampLight, scene,sunlight, controls,camera,  renderer, bulb, curtainLeft, curtainRight, floor, windowGlass, wallRight, wallBack, wallFront, wallLeft, ceiling } from './room.js';
     import { rug } from './rug.js';
 
  
