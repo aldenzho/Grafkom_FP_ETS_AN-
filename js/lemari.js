@@ -4,8 +4,8 @@
     const textureLoader = new THREE.TextureLoader();
 
     // Muat tekstur dari gambar JPG
-    const woodTexture = textureLoader.load('/texture/lemari.jpg');   // untuk badan lemari
-    const bodyLemari = textureLoader.load('/texture/lemari.jpg'); // untuk pintu
+    const woodTexture = textureLoader.load('./texture/lemari.jpg');   // untuk badan lemari
+    const bodyLemari = textureLoader.load('./texture/lemari.jpg'); // untuk pintu
 
     // Atur agar tekstur diulang dengan baik
     woodTexture.wrapS = woodTexture.wrapT = THREE.RepeatWrapping;
