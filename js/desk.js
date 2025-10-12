@@ -6,7 +6,7 @@
     const deskZ = bedCenterZ - 4.5;
 
     // Muat tekstur dari bed.jpg
-    const deskTexture = new THREE.TextureLoader().load('/texture/bed.jpg');
+    const deskTexture = new THREE.TextureLoader().load('./texture/bed.jpg');
     deskTexture.wrapS = THREE.RepeatWrapping;
     deskTexture.wrapT = THREE.RepeatWrapping;
     deskTexture.repeat.set(2, 2); // supaya teksturnya tidak terlalu besar
