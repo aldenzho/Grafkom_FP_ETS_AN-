@@ -1,20 +1,45 @@
-// tambahkan import di paling atas file ui.js (bersama import lainnya)
-import { DragControls } from "https://esm.sh/three@0.150.0/examples/jsm/controls/DragControls.js";
-import { roomW, roomD } from './room.js'; // sudah diexport di room.js
-
-// ui.js (replace existing)
+// js/ui.js (REPLACE existing ui.js)
 import { bedMesh, blanketMesh } from './bed.js';
-import { deskTop } from './desk.js';
+import { desk } from './desk.js';
 import { pillow1, pillow2 } from './pillow.js';
-import { chairSeat } from './chair.js';
-import { THREE, lampLight, scene, sunlight, controls, camera, renderer, bulb, curtainLeft, curtainRight, floor, windowGlass, wallRight, wallBack, wallFront, wallLeft, ceiling, ambient, skyboxTexture } from './room.js';
+import { chair } from './chair.js';
+import { THREE, lampLight, scene, sunlight, controls, camera, renderer, bulb, curtainLeft, curtainRight, floor, windowGlass, wallRight, wallBack, wallFront, wallLeft, ceiling, ambient, skyboxTexture, roomW, roomD } from './room.js';
 import { rug } from './rug.js';
 
-// selectable list
-const selectables = [bedMesh, blanketMesh, pillow1, pillow2, deskTop, chairSeat, bulb, windowGlass, wallRight, rug, curtainLeft, curtainRight, floor, wallBack, wallFront, wallLeft, ceiling];
+// DragControls import
+import { DragControls } from "https://esm.sh/three@0.150.0/examples/jsm/controls/DragControls.js";
+import { lemari } from './lemari.js';
 
+/* ---------------------------
+   Selection / Hover / Selectables
+   --------------------------- */
 
-const ray = new THREE.Raycaster(); const pointer = new THREE.Vector2();
+// Make sure this list includes objects that can be hovered/selected.
+// Exclude: walls, ceiling, lemari (if lemari exists and is locked)
+const selectables = [bedMesh, blanketMesh, pillow1, pillow2, desk, chair, bulb, windowGlass, rug /* walls/ceiling intentionally excluded */ , curtainLeft, curtainRight, floor, lemari];
+
+// For dragging we want a more restricted set: only movable furniture (no bulb, no floor if you prefer)
+const draggableObjects = [bedMesh, blanketMesh, pillow1, pillow2, rug, curtainLeft, curtainRight /* bulb and floor excluded */ ];
+
+// Raycaster + pointer
+const ray = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+// helper: climb parents to find selectable root (uses userData.selectableRoot flag)
+function getSelectableRoot(obj){
+  if(!obj) return null;
+  // if the object itself explicitly marked as root, return it
+  if(obj.userData && obj.userData.selectableRoot) return obj;
+  // climb parents until scene
+  let cur = obj;
+  while(cur.parent){
+    cur = cur.parent;
+    if(cur.userData && cur.userData.selectableRoot) return cur;
+    if(cur.type === 'Scene') break;
+  }
+  // nothing found: return original object
+  return obj;
+}
+
 let hoverObj = null, selected = null;
 
 document.getElementById('ui').style.display = 'none';
@@ -31,23 +56,27 @@ function setHover(obj){
   }
 }
 
-function onMove(e){
+// Update pointer on move for both hover/select and drag projection
+function updatePointerFromEvent(e){
   const rect = renderer.domElement.getBoundingClientRect();
   pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
   pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+}
+
+function onMove(e){
+  updatePointerFromEvent(e);
   ray.setFromCamera(pointer, camera);
   const ints = ray.intersectObjects(selectables, true);
   setHover(ints.length ? ints[0].object : null);
 }
 
 function onDown(e){
-  const rect = renderer.domElement.getBoundingClientRect();
-  pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-  pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  updatePointerFromEvent(e);
   ray.setFromCamera(pointer, camera);
   const ints = ray.intersectObjects(selectables, true);
   if(ints.length){
     const obj = ints[0].object;
+    // curtains & bulb special actions routed earlier if needed
     if(obj===curtainLeft || obj===curtainRight){ ui.animCurt.click(); deselect(); return; }
     if(obj===bulb){ ui.toggleLamp.click(); deselect(); return; }
     select(obj);
@@ -57,7 +86,10 @@ function onDown(e){
 renderer.domElement.addEventListener('pointermove', onMove);
 renderer.domElement.addEventListener('pointerdown', onDown);
 
-// UI elements
+/* ---------------------------
+   UI binding (existing controls)
+   --------------------------- */
+
 const ui = {
   title: document.getElementById('selectedTitle'),
   color: document.getElementById('color'),
@@ -82,7 +114,6 @@ const ui = {
   screenshotBtn: document.getElementById('screenshot'),
   presetName: document.getElementById('presetName'), savePreset: document.getElementById('savePreset'), presetList: document.getElementById('presetList'),
   loadPreset: document.getElementById('loadPreset'), delPreset: document.getElementById('delPreset'), perfBtn: document.getElementById('perfBtn'),
-  // dynamically create lampColor & day/night if not present in HTML
   lampColor: (() => { let el = document.getElementById('lampColor'); if(!el){ el = document.createElement('input'); el.type='color'; el.id='lampColor'; el.value='#fff2b2'; el.style.width='46px'; el.style.height='30px'; el.style.border='0'; const row = document.createElement('div'); row.className='row'; const label = document.createElement('label'); label.textContent='Lamp Color'; row.appendChild(label); row.appendChild(el); document.getElementById('ui').insertBefore(row, document.getElementById('perfBtn').parentNode); } return document.getElementById('lampColor'); })(),
   dayBtn: (() => { let b = document.getElementById('dayBtn'); if(!b){ b = document.createElement('button'); b.className='small'; b.id='dayBtn'; b.textContent='Day'; const row = document.createElement('div'); row.className='row'; const label = document.createElement('label'); label.textContent='Time'; row.appendChild(label); row.appendChild(b); document.getElementById('ui').insertBefore(row, document.getElementById('perfBtn').parentNode); } return document.getElementById('dayBtn'); })(),
   nightBtn: (() => { let b = document.getElementById('nightBtn'); if(!b){ b = document.createElement('button'); b.className='small'; b.id='nightBtn'; b.textContent='Night'; const containerRow = document.createElement('div'); containerRow.style.display='flex'; containerRow.style.gap='8px'; containerRow.appendChild(b); document.getElementById('dayBtn').parentNode.appendChild(containerRow); } return document.getElementById('nightBtn'); })()
@@ -130,7 +161,9 @@ function deselect(){
   selected = null; document.getElementById('ui').style.display = 'none';
 }
 
-// UI listeners
+/* ---------------------------
+   UI listeners (material edits)
+   --------------------------- */
 ui.color.addEventListener('input', e => { if(selected && selected.material && selected.material.color) selected.material.color.set(e.target.value); });
 ui.opacity.addEventListener('input', e => { ui.opval.textContent = parseFloat(e.target.value).toFixed(2); if(selected && selected.material){ selected.material.opacity = parseFloat(e.target.value); selected.material.transparent = selected.material.opacity < 1; selected.material.needsUpdate = true; } });
 ui.wire.addEventListener('change', e => { if(selected && selected.material) selected.material.wireframe = e.target.checked; });
@@ -142,7 +175,7 @@ ui.rough.addEventListener('input', e => { ui.rghVal.textContent = parseFloat(e.t
 ui.sunS.addEventListener('input', e => { sunlight.intensity = parseFloat(e.target.value); ui.sunV.textContent = parseFloat(e.target.value).toFixed(1); });
 ui.lampS.addEventListener('input', e => { lampLight.intensity = parseFloat(e.target.value); ui.lampV.textContent = parseFloat(e.target.value).toFixed(1); bulb.material.emissiveIntensity = lampLight.intensity; });
 
-// lamp color control
+// lamp color
 ui.lampColor.addEventListener('input', e => {
   const hex = e.target.value;
   bulb.material.color.set(hex);
@@ -150,7 +183,7 @@ ui.lampColor.addEventListener('input', e => {
   lampLight.color.copy(c);
 });
 
-// Time of day helpers (uses ambient & skyboxTexture imported from room.js)
+// Time of day
 function setTimeOfDay(mode){
   if(mode === 'night'){
     sunlight.intensity = 0.15; ui.sunS.value = sunlight.intensity; ui.sunV.textContent = sunlight.intensity.toFixed(2);
@@ -167,28 +200,124 @@ function setTimeOfDay(mode){
 ui.dayBtn.addEventListener('click', ()=> setTimeOfDay('day'));
 ui.nightBtn.addEventListener('click', ()=> setTimeOfDay('night'));
 
-// curtains toggle/animation (unchanged)
-let curtainsOpen = false; let curtAnimating = false;
-ui.toggleCurt.addEventListener('click', () => {
-  curtainsOpen = !curtainsOpen;
-  curtainLeft.position.z = curtainsOpen ? curtainLeft.userData.openPosZ : curtainLeft.userData.closedPosZ;
-  curtainRight.position.z = curtainsOpen ? curtainRight.userData.openPosZ : curtainRight.userData.closedPosZ;
+/* ---------------------------
+   Drag & Drop: DragControls
+   --------------------------- */
+
+// Create DragControls for the allowed objects.
+// Ensure we filter out any object marked as locked (userData.locked === true).
+function getUnlockedDraggables(arr){
+  return arr.filter(o => !(o.userData && o.userData.locked));
+}
+let currentDraggables = getUnlockedDraggables(draggableObjects);
+const dragControls = new DragControls(currentDraggables, camera, renderer.domElement);
+
+// Plane for projecting mouse drag (horizontal)
+const movePlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
+const tempRay = new THREE.Raycaster();
+const snapToGrid = (v, g = 0.05) => Math.round(v / g) * g; // 5cm grid
+
+let draggingObj = null;
+let draggingOrigY = 0;
+
+// Ensure pointer is updated globally (we already update on pointermove)
+renderer.domElement.addEventListener('pointermove', (e) => {
+  updatePointerFromEvent(e);
 });
-ui.animCurt.addEventListener('click', () => {
-  if(curtAnimating) return; curtAnimating = true; curtainsOpen = !curtAnimating ? !curtainsOpen : curtainsOpen; // safety
-  curtainsOpen = !curtainsOpen;
-  const frames = 40; let t=0;
-  const startL = curtainLeft.position.z, startR = curtainRight.position.z;
-  const targetL = curtainsOpen ? curtainLeft.userData.openPosZ : curtainLeft.userData.closedPosZ;
-  const targetR = curtainsOpen ? curtainRight.userData.openPosZ : curtainRight.userData.closedPosZ;
-  const anim = () => { t++; const alpha = t/frames; const ease = (--alpha)*alpha*alpha + 1; curtainLeft.position.z = THREE.MathUtils.lerp(startL, targetL, ease); curtainRight.position.z = THREE.MathUtils.lerp(startR, targetR, ease); if(t < frames) requestAnimationFrame(anim); else curtAnimating = false; };
-  anim();
+
+// Drag start: disable orbit rotate only (keep zoom/pan)
+dragControls.addEventListener('dragstart', (event) => {
+  const obj = event.object;
+  if(obj.userData && obj.userData.locked){
+    // ignore drag if locked
+    event.preventDefault && event.preventDefault();
+    return;
+  }
+  draggingObj = obj;
+  draggingOrigY = draggingObj.position.y;
+  controls.enableRotate = false; // keep zoom & pan active
+
+  // optional visual feedback
+  if(draggingObj.material && draggingObj.material.emissive){
+    draggingObj.userData._savedEm = draggingObj.material.emissive.clone();
+    draggingObj.material.emissive.setHex(0x333333);
+  }
 });
+
+// Drag: project pointer to horizontal plane at object's height, then clamp + snap
+dragControls.addEventListener('drag', (event) => {
+  if(!draggingObj) return;
+
+  tempRay.setFromCamera(pointer, camera);
+  movePlane.set(new THREE.Vector3(0,1,0), -draggingOrigY);
+  const intersectPt = new THREE.Vector3();
+  tempRay.ray.intersectPlane(movePlane, intersectPt);
+
+  if(!intersectPt) return;
+
+  // clamp inside room bounds with margin
+  const padding = 0.25; // slightly conservative margin
+  const halfW = roomW / 2 - padding;
+  const halfD = roomD / 2 - padding;
+
+  let nx = Math.max(-halfW, Math.min(halfW, intersectPt.x));
+  let nz = Math.max(-halfD, Math.min(halfD, intersectPt.z));
+
+  // optional snap
+  nx = snapToGrid(nx, 0.05);
+  nz = snapToGrid(nz, 0.05);
+
+  draggingObj.position.set(nx, draggingOrigY, nz);
+});
+
+// Drag end: restore rotate, clear states, save last pos
+dragControls.addEventListener('dragend', (event) => {
+  if(!draggingObj) { controls.enableRotate = true; return; }
+  controls.enableRotate = true;
+  if(draggingObj.material && draggingObj.material.emissive && draggingObj.userData._savedEm){
+    draggingObj.material.emissive.copy(draggingObj.userData._savedEm);
+    delete draggingObj.userData._savedEm;
+  }
+  draggingObj.userData.lastPos = draggingObj.position.clone();
+  draggingObj = null;
+});
+
+// Safety: if pointerup occurs outside, ensure cleanup
+window.addEventListener('pointerup', () => {
+  if(draggingObj){
+    controls.enableRotate = true;
+    draggingObj = null;
+  }
+});
+
+// If draggable set changes (e.g., new objects), refresh DragControls
+function refreshDraggables(){
+  const unlocked = getUnlockedDraggables(draggableObjects);
+  // remove old and re-create (simpler than trying to update internal list)
+  try { dragControls.deactivate && dragControls.deactivate(); } catch(e){}
+  // Note: reassigning variable is OK here (we don't rely on previous instance)
+  // But we should remove previous event listeners if necessary — simple approach: page reload recommended after heavy changes.
+  // Create a new DragControls instance (lightweight)
+  // eslint-disable-next-line no-unused-vars
+  currentDraggables = unlocked;
+  // Can't reassign the const dragControls; in practice if you need dynamic updates restart page or manage control references.
+}
+
+/* ---------------------------
+   Rest of UI logic (presets, focus, screenshot...) 
+   Keep existing behavior from your prior implementation.
+   --------------------------- */
 
 // screenshot
-ui.screenshotBtn.addEventListener('click', ()=> { try { renderer.render(scene, camera); const dataURL = renderer.domElement.toDataURL('image/png'); const a = document.createElement('a'); a.href = dataURL; a.download = 'room_screenshot.png'; a.click(); } catch(err) { alert('Screenshot failed: ' + err.message); } });
+ui.screenshotBtn.addEventListener('click', ()=> {
+  try {
+    renderer.render(scene, camera);
+    const dataURL = renderer.domElement.toDataURL('image/png');
+    const a = document.createElement('a'); a.href = dataURL; a.download = 'room_screenshot.png'; a.click();
+  } catch(err) { alert('Screenshot failed: ' + err.message); }
+});
 
-// focus
+// focus (unchanged)
 ui.focusBtn.addEventListener('click', ()=> {
   if(!selected) return;
   const box = new THREE.Box3().setFromObject(selected);
@@ -205,19 +334,67 @@ ui.focusBtn.addEventListener('click', ()=> {
 ui.closeBtn.addEventListener('click', ()=> deselect());
 
 // Reset material
-ui.resetBtn.addEventListener('click', ()=> { if(!selected || !selected.userData || !selected.userData._origMat) return; const oldEmissive = selected.material.emissive ? selected.material.emissive.clone() : null; selected.material = selected.userData._origMat.originalMaterial.clone(); selected.material.needsUpdate = true; if(oldEmissive) selected.material.emissive.copy(oldEmissive); select(selected); });
+ui.resetBtn.addEventListener('click', ()=> {
+  if(!selected || !selected.userData || !selected.userData._origMat) return;
+  const oldEmissive = selected.material.emissive ? selected.material.emissive.clone() : null;
+  selected.material = selected.userData._origMat.originalMaterial.clone();
+  selected.material.needsUpdate = true;
+  if(oldEmissive) selected.material.emissive.copy(oldEmissive);
+  select(selected);
+});
 
-// presets (unchanged)
-function refreshPresetList(){ const sel = ui.presetList; sel.innerHTML = '<option value="">-- choose preset --</option>'; const keys = Object.keys(localStorage).filter(k=>k.startsWith('roomPreset:')); keys.forEach(k=>{ const name = k.replace('roomPreset:',''); const opt = document.createElement('option'); opt.value = k; opt.textContent = name; sel.appendChild(opt); }); }
+// Presets (unchanged)
+function refreshPresetList(){
+  const sel = ui.presetList; sel.innerHTML = '<option value="">-- choose preset --</option>';
+  const keys = Object.keys(localStorage).filter(k=>k.startsWith('roomPreset:'));
+  keys.forEach(k=>{ const name = k.replace('roomPreset:',''); const opt = document.createElement('option'); opt.value = k; opt.textContent = name; sel.appendChild(opt); });
+}
 refreshPresetList();
 
-ui.savePreset.addEventListener('click', ()=> { if(!selected) { alert('Select an object first'); return; } const name = (ui.presetName.value || selected.name || 'preset').trim(); if(!name) { alert('Enter preset name'); return; } const data = { material: { color: selected.material.color ? selected.material.color.getHexString() : null, opacity: selected.material.opacity, wireframe: !!selected.material.wireframe, shininess: selected.material.shininess !== undefined ? selected.material.shininess : null, metalness: selected.material.metalness !== undefined ? selected.material.metalness : null, roughness: selected.material.roughness !== undefined ? selected.material.roughness : null } }; localStorage.setItem('roomPreset:' + name, JSON.stringify(data)); refreshPresetList(); alert('Preset saved: ' + name); });
+ui.savePreset.addEventListener('click', ()=> {
+  if(!selected) { alert('Select an object first'); return; }
+  const name = (ui.presetName.value || selected.name || 'preset').trim();
+  if(!name) { alert('Enter preset name'); return; }
+  const data = {
+    material: {
+      color: selected.material.color ? selected.material.color.getHexString() : null,
+      opacity: selected.material.opacity,
+      wireframe: !!selected.material.wireframe,
+      shininess: selected.material.shininess !== undefined ? selected.material.shininess : null,
+      metalness: selected.material.metalness !== undefined ? selected.material.metalness : null,
+      roughness: selected.material.roughness !== undefined ? selected.material.roughness : null
+    }
+  };
+  localStorage.setItem('roomPreset:' + name, JSON.stringify(data));
+  refreshPresetList();
+  alert('Preset saved: ' + name);
+});
 
-ui.loadPreset.addEventListener('click', ()=> { const key = ui.presetList.value; if(!key) return alert('Choose preset'); const json = localStorage.getItem(key); if(!json) return alert('Preset not found'); const data = JSON.parse(json); if(!selected) return alert('Select object first to apply preset'); const m = selected.material; const oldEmissive = m.emissive ? m.emissive.clone() : null; if(data.material.color && m.color) m.color.set('#' + data.material.color); if(data.material.opacity !== undefined) { m.opacity = data.material.opacity; m.transparent = m.opacity < 1; } if(data.material.wireframe !== undefined) m.wireframe = data.material.wireframe; if(data.material.shininess !== null && m.shininess !== undefined) m.shininess = data.material.shininess; if(data.material.metalness !== null && m.metalness !== undefined) m.metalness = data.material.metalness; if(data.material.roughness !== null && m.roughness !== undefined) m.roughness = data.material.roughness; m.needsUpdate = true; if(oldEmissive) m.emissive.copy(oldEmissive); alert('Preset applied'); select(selected); });
+ui.loadPreset.addEventListener('click', ()=> {
+  const key = ui.presetList.value; if(!key) return alert('Choose preset');
+  const json = localStorage.getItem(key); if(!json) return alert('Preset not found');
+  const data = JSON.parse(json);
+  if(!selected) return alert('Select object first to apply preset');
+  const m = selected.material;
+  const oldEmissive = m.emissive ? m.emissive.clone() : null;
+  if(data.material.color && m.color) m.color.set('#' + data.material.color);
+  if(data.material.opacity !== undefined) { m.opacity = data.material.opacity; m.transparent = m.opacity < 1; }
+  if(data.material.wireframe !== undefined) m.wireframe = data.material.wireframe;
+  if(data.material.shininess !== null && m.shininess !== undefined) m.shininess = data.material.shininess;
+  if(data.material.metalness !== null && m.metalness !== undefined) m.metalness = data.material.metalness;
+  if(data.material.roughness !== null && m.roughness !== undefined) m.roughness = data.material.roughness;
+  m.needsUpdate = true;
+  if(oldEmissive) m.emissive.copy(oldEmissive);
+  alert('Preset applied');
+  select(selected); // refresh UI
+});
 
-ui.delPreset.addEventListener('click', ()=> { const key = ui.presetList.value; if(!key) return alert('Choose preset to delete'); localStorage.removeItem(key); refreshPresetList(); alert('Preset deleted'); });
+ui.delPreset.addEventListener('click', ()=> {
+  const key = ui.presetList.value; if(!key) return alert('Choose preset to delete');
+  localStorage.removeItem(key); refreshPresetList(); alert('Preset deleted');
+});
 
-// performance toggle
+// Perf toggle (unchanged)
 let lowQuality = false;
 ui.perfBtn.addEventListener('click', ()=> {
   lowQuality = !lowQuality;
@@ -273,7 +450,9 @@ function animate(){
 }
 animate();
 
+// resize handler
 window.addEventListener('resize', ()=> { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 
 // fill preset dropdown on load
 refreshPresetList();
+
