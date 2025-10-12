@@ -1,32 +1,66 @@
-    import { THREE, scene } from './room.js'; 
-    import { leftX, bedCenterZ, bedD, bedH} from './bed.js'; 
-    const pillowMat = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.8 });
+    import { THREE, scene , safeLoadTexture, roomW, roomD } from './room.js';
+   //pintu
+    const textureDoorLoader = new THREE.TextureLoader();
+    const doorTexture = safeLoadTexture('./texture/door.jpg', [2, 2]);
+    doorTexture.wrapS = doorTexture.wrapT = THREE.RepeatWrapping;
+    doorTexture.repeat.set(1, 2);
 
-    function makePillow(x,z, name){ const g=new THREE.SphereGeometry(0.32,32,32); const m=pillowMat.clone(); const p=new THREE.Mesh(g,m); p.scale.set(1.5,0.45,1.85); p.position.set(x, bedH + 0.32*0.45, z); p.castShadow=true; p.receiveShadow=true; p.name = name; scene.add(p); return p; }
-    const pillow1 = makePillow(leftX + 0.625, bedCenterZ + bedD/2 - 0.95, "Pillow L");
-    const pillow2 = makePillow(leftX + 0.625, bedCenterZ + bedD/2 - 2.15, "Pillow R");
+    // --- Badan pintu ---
+    const doorRoomGeo = new THREE.BoxGeometry(1.5, 2.5, 0.1); 
+    const doorRoomMat = new THREE.MeshStandardMaterial({
+      map: doorTexture,
+      roughness: 0.1,
+      metalness: 0.3,
+    });
 
-    function createRoundedBox(width, height, depth, radius, smoothness) {
-      const shape = new THREE.Shape();
-      const eps = 0.00001;
-      const radius0 = radius - eps;
-      shape.absarc(eps, eps, eps, -Math.PI / 2, -Math.PI, true);
-      shape.absarc(eps, height - radius * 2, radius0, Math.PI, Math.PI / 2, true);
-      shape.absarc(width - radius * 2, height - radius * 2, radius0, Math.PI / 2, 0, true);
-      shape.absarc(width - radius * 2, eps, radius0, 0, -Math.PI / 2, true);
-      const geometry = new THREE.ExtrudeGeometry(shape, {
-        depth: depth - radius * 2,
-        bevelEnabled: true,
-        bevelSegments: smoothness * 2,
-        steps: 1,
-        bevelSize: radius,
-        bevelThickness: radius,
-        curveSegments: smoothness
-      });
-      geometry.center();
-      return geometry;
-    }
+    const door = new THREE.Mesh(doorRoomGeo, doorRoomMat);
+    door.castShadow = true;
+    door.receiveShadow = true;
 
-    export{pillow1, pillow2}
+    // --- Posisi pintu di ruangan ---
+    door.position.set(2, 1.3, 3.53);
+    scene.add(door);
+
+    // --- Bingkai pintu hitam ---
+    const frameMatDoor = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.9, roughness: 0.2 });
+
+    // ukuran bingkai
+    const frameDoorThickness = 0.05;
+    const doorWidth = 1.5;
+    const doorHeight = 2.5;
+
+    // sisi kiri
+    const frameLeftDoor = new THREE.Mesh(new THREE.BoxGeometry(frameDoorThickness, doorHeight, 0.12), frameMatDoor);
+    frameLeftDoor.position.set(-doorWidth / 2 - frameDoorThickness / 2, 0, 0);
+
+    // sisi kanan
+    const frameRightDoor = new THREE.Mesh(new THREE.BoxGeometry(frameDoorThickness, doorHeight, 0.12), frameMatDoor);
+    frameRightDoor.position.set(doorWidth / 2 + frameDoorThickness / 2, 0, 0);
+
+    // sisi atas
+    const frameTopDoor = new THREE.Mesh(new THREE.BoxGeometry(doorWidth + frameDoorThickness * 2, frameDoorThickness, 0.12), frameMatDoor);
+    frameTopDoor.position.set(0, doorHeight / 2 + frameDoorThickness / 2, 0);
+
+    // sisi bawah
+    const frameBottomDoor = new THREE.Mesh(new THREE.BoxGeometry(doorWidth + frameDoorThickness * 2, frameDoorThickness, 0.12), frameMatDoor);
+    frameBottomDoor.position.set(0, -doorHeight / 2 - frameDoorThickness / 2, 0);
+
+    // gabungkan ke pintu
+    door.add(frameLeftDoor, frameRightDoor, frameTopDoor, frameBottomDoor);
 
     
+    // --- Gagang pintu ---
+    const handleDoorGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.2, 16); 
+    const handleDoorMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.8, roughness: 0.2 });
+    const handleDoor = new THREE.Mesh(handleDoorGeo, handleDoorMat);
+
+    // Putar supaya silinder horizontal
+    handleDoor.rotation.z = Math.PI / 2;
+
+    // Posisi gagang di pintu (sesuaikan arah bukaan pintu)
+    handleDoor.position.set(1.4, 1.3, 3.3);
+
+
+    scene.add(handleDoor);
+
+
