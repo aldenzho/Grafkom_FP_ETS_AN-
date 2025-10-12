@@ -1,6 +1,6 @@
  import { THREE, scene , safeLoadTexture, roomW, roomD } from './room.js';
- const bedTex = safeLoadTexture('/texture/bed.jpg'); bedTex.wrapS = bedTex.wrapT = THREE.RepeatWrapping; // Bed has no specific repeat
- const blanketTex = safeLoadTexture('/texture/blanket.jpg', [2, 2]);
+ const bedTex = safeLoadTexture('./texture/bed.jpg'); bedTex.wrapS = bedTex.wrapT = THREE.RepeatWrapping; // Bed has no specific repeat
+ const blanketTex = safeLoadTexture('./texture/blanket.jpg', [2, 2]);
 
   const bedMat = new THREE.MeshStandardMaterial({ map: bedTex, roughness:0.7, metalness:0 });
   const blanketMat = new THREE.MeshStandardMaterial({ map: blanketTex, roughness:1, metalness:0, normalScale: new THREE.Vector2(0.5, 0.5)});
