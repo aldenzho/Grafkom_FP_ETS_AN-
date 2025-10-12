@@ -1,70 +1,74 @@
-    import { THREE, scene , safeLoadTexture, roomW, roomD } from './room.js';
+// js/lemari.js
+import { THREE, scene , safeLoadTexture, roomW, roomD } from './room.js';
 
-// --- LEMARI 2 PINTU DENGAN TEKSTUR ---
-    const textureLoader = new THREE.TextureLoader();
+// load texture
+const textureLoader = new THREE.TextureLoader();
+const woodTexture = textureLoader.load('./texture/lemari.jpg');
+woodTexture.wrapS = woodTexture.wrapT = THREE.RepeatWrapping;
+woodTexture.repeat.set(2, 2);
 
-    // Muat tekstur dari gambar JPG
-    const woodTexture = textureLoader.load('./texture/lemari.jpg');   // untuk badan lemari
-    const bodyLemari = textureLoader.load('./texture/lemari.jpg'); // untuk pintu
+// group
+const lemari = new THREE.Group();
 
-    // Atur agar tekstur diulang dengan baik
-    woodTexture.wrapS = woodTexture.wrapT = THREE.RepeatWrapping;
-    bodyLemari.wrapS = bodyLemari.wrapT = THREE.RepeatWrapping;
+// materials (unlit)
+const bodyMat = new THREE.MeshBasicMaterial({ map: woodTexture });
+const doorMat = new THREE.MeshBasicMaterial({ map: woodTexture });
 
-    // Ulangi tekstur agar tidak tampak terlalu besar
-    woodTexture.repeat.set(2, 2);
-    bodyLemari.repeat.set(2, 2);
+// body
+const bodyGeo = new THREE.BoxGeometry(3.7, 3, 0.8);
+const body = new THREE.Mesh(bodyGeo, bodyMat);
+body.castShadow = false;
+body.receiveShadow = false;
+body.position.set(0, 1.5, 0);
+body.name = 'Lemari Body';
+lemari.add(body);
 
-    // --- LEMARI GROUP ---
-    const lemari = new THREE.Group();
+// left door
+const doorGeo = new THREE.BoxGeometry(2.9, 3, 0.05); // half-width door
+const doorLeft = new THREE.Mesh(doorGeo, doorMat);
+doorLeft.position.set(-0.46, 1.5, 0.42); // left side
+doorLeft.castShadow = false;
+doorLeft.receiveShadow = false;
+doorLeft.name = 'Lemari Door';
+lemari.add(doorLeft);
 
-    // Badan lemari (pakai tekstur kayu)
-    const bodyGeo = new THREE.BoxGeometry(3.7, 3, 0.8);
-    const bodyMat = new THREE.MeshStandardMaterial({
-      map: woodTexture,
-      roughness: 0.6,
-      metalness: 0.3
-    });
-    const body = new THREE.Mesh(bodyGeo, bodyMat);
-    body.castShadow = true;
-    body.receiveShadow = true;
-    body.position.set(0, 1.5, 0);
-    lemari.add(body);
+// right door
+const doorRight = new THREE.Mesh(doorGeo, doorMat);
+doorRight.position.set(0.46, 1.5, 0.42); // right side
+doorRight.castShadow = false;
+doorRight.receiveShadow = false;
+doorRight.name = 'Lemari Door';
+lemari.add(doorRight);
 
-    // Pintu kiri (pakai tekstur hitam)
-    const doorGeo = new THREE.BoxGeometry(1.83, 3, 0.05);
-    const doorMat = new THREE.MeshStandardMaterial({
-      map: bodyLemari,
-      roughness: 0.7,
-      metalness: 0.3,
-    });
-    const doorLeft = new THREE.Mesh(doorGeo, doorMat);
-    doorLeft.position.set(-0.93, 1.5, 0.42);
-    doorLeft.castShadow = true;
-    doorLeft.receiveShadow = true;
-    lemari.add(doorLeft);
+// handles (optional small boxes)
+const handleGeo = new THREE.BoxGeometry(0.04, 0.6, 0.04);
+const handleMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
+const handleL = new THREE.Mesh(handleGeo, handleMat);
+handleL.position.set(-0.3, 1.5, 0.47);
+handleL.name = 'Handle';
+handleL.castShadow = false;
+lemari.add(handleL);
+const handleR = handleL.clone();
+handleR.position.set(0.3, 1.5, 0.47);
+handleR.name = 'Handle';
+lemari.add(handleR);
 
-    // Pintu kanan (pakai tekstur hitam juga)
-    const doorRight = new THREE.Mesh(doorGeo, doorMat);
-    doorRight.position.set(0.93, 1.5, 0.3);
-    doorRight.castShadow = true;
-    doorRight.receiveShadow = true;
-    lemari.add(doorRight);
+// position group in room
+lemari.position.set(1.5, 0, -3);
 
-    // Pegangan pintu (warna abu logam)
-    const handleGeo = new THREE.BoxGeometry(0.05, 1, 0.05);
-    const handleMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8, roughness: 0.2 });
+// mark as locked (non-movable) and selectable root (so UI groups children under it)
+lemari.userData.locked = true;
+lemari.userData.selectableRoot = true;
 
-    const handleLeft = new THREE.Mesh(handleGeo, handleMat);
-    handleLeft.position.set(-1.75, 1.5, 0.47);
-    handleLeft.castShadow = true;
-    lemari.add(handleLeft);
+// also mark children as not root (and locked) to help logic if desired
+lemari.traverse((c) => {
+  if (c.isMesh) {
+    c.userData.locked = true;
+    // children should not be considered selectable roots
+    c.userData.selectableRoot = false;
+  }
+});
 
-    const handleRight = new THREE.Mesh(handleGeo, handleMat);
-    handleRight.position.set(1.75, 1.5, 0.43);
-    handleRight.castShadow = true;
-    lemari.add(handleRight);
-
-    // Posisi lemari di dalam kamar
-    lemari.position.set(1.5, 0, -3);
-    scene.add(lemari);
+// add to scene and export
+scene.add(lemari);
+export { lemari };
