@@ -1,7 +1,7 @@
     import { THREE, scene , safeLoadTexture, roomW, roomD } from './room.js';
    //pintu
     const textureDoorLoader = new THREE.TextureLoader();
-    const doorTexture = safeLoadTexture('/texture/door.jpg', [2, 2]);
+    const doorTexture = safeLoadTexture('./texture/door.jpg', [2, 2]);
     doorTexture.wrapS = doorTexture.wrapT = THREE.RepeatWrapping;
     doorTexture.repeat.set(1, 2);
 
