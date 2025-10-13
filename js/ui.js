@@ -19,7 +19,7 @@ import { lemari } from './lemari.js';
 const selectables = [bedMesh, blanketMesh, pillow1, pillow2, desk, chair, bulb, windowGlass, rug /* walls/ceiling intentionally excluded */ , curtainLeft, curtainRight, floor, lemari];
 
 // For dragging we want a more restricted set: only movable furniture (no bulb, no floor if you prefer)
-const draggableObjects = [bedMesh, blanketMesh, pillow1, pillow2, rug, curtainLeft, curtainRight /* bulb and floor excluded */ ];
+const draggableObjects = [bedMesh, blanketMesh, pillow1, pillow2, rug, curtainLeft, curtainRight ];
 
 // Raycaster + pointer
 const ray = new THREE.Raycaster();
@@ -82,6 +82,7 @@ function onDown(e){
     select(obj);
   } else deselect();
 }
+
 
 renderer.domElement.addEventListener('pointermove', onMove);
 renderer.domElement.addEventListener('pointerdown', onDown);
@@ -182,6 +183,30 @@ ui.lampColor.addEventListener('input', e => {
   const c = new THREE.Color(hex);
   lampLight.color.copy(c);
 });
+
+// curtains: toggle (instant) and animated (lerp)
+    let curtainsOpen = false; let curtAnimating = false;
+    ui.toggleCurt.addEventListener('click', () => { 
+      curtainsOpen = !curtainsOpen; // instant teleport to open/closed
+      curtainLeft.position.z = curtainsOpen ? curtainLeft.userData.openPosZ : curtainLeft.userData.closedPosZ;
+      curtainRight.position.z = curtainsOpen ? curtainRight.userData.openPosZ : curtainRight.userData.closedPosZ;
+    });
+    ui.animCurt.addEventListener('click', () => { 
+      if(curtAnimating) return; 
+      curtAnimating = true; 
+      curtainsOpen = !curtainsOpen; // animate over 40 frames
+      const frames = 40; let t=0;
+      const startL = curtainLeft.position.z, startR = curtainRight.position.z;
+      const targetL = curtainsOpen ? curtainLeft.userData.openPosZ : curtainLeft.userData.closedPosZ;
+      const targetR = curtainsOpen ? curtainRight.userData.openPosZ : curtainRight.userData.closedPosZ;
+      const anim = () => {
+        t++; const alpha = t/frames; const ease = (--alpha)*alpha*alpha + 1; // easeOutCubic
+        curtainLeft.position.z = THREE.MathUtils.lerp(startL, targetL, ease);
+        curtainRight.position.z = THREE.MathUtils.lerp(startR, targetR, ease);
+        if(t < frames) requestAnimationFrame(anim); else curtAnimating = false;
+      };
+      anim();
+    });
 
 // Time of day
 function setTimeOfDay(mode){

@@ -45,11 +45,10 @@ const wallTex = safeLoadTexture('./texture/wall.jpg', [2, 1]);
 const floorTex = safeLoadTexture('./texture/floor.jpg', [4, 4]);
 
 // optional maps (if present)
-const floorNormal = safeLoadTexture('./texture/floor_normal.jpg', [4,4]);
-const floorRough  = safeLoadTexture('./texture/floor_rough.jpg', [4,4]);
+
 
 const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, side: THREE.DoubleSide });
-const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, normalMap: floorNormal, roughnessMap: floorRough });
+const floorMat = new THREE.MeshStandardMaterial({ map: floorTex});
 
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(roomW, roomD), floorMat);
 floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; floor.name='Floor'; scene.add(floor);
@@ -91,7 +90,7 @@ const frameLeft = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, windowH+0
 const frameRight = frameLeft.clone(); frameRight.position.set(frameOffset, windowCenterY, windowW/2 + 0.025); frameRight.name='Frame Right'; scene.add(frameRight);
 
 // lamp & bulb
-const lampLight = new THREE.PointLight(0xfff8e7, 0.9, 12); lampLight.position.set(0,2.6,0); lampLight.castShadow=true; scene.add(lampLight);
+const lampLight = new THREE.PointLight(0xfff8e7, 0.9, 10); lampLight.position.set(0,2.6,0); lampLight.castShadow=true; scene.add(lampLight);
 const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 16), new THREE.MeshStandardMaterial({ emissive: 0xffffaa, emissiveIntensity: 0.9, color: 0xffffff }));
 bulb.position.copy(lampLight.position); bulb.name='Bulb'; scene.add(bulb);
 
